@@ -1,0 +1,21 @@
+apiVersion: skaffold/v2beta11
+kind: Config
+
+deploy: {}
+
+profiles:
+- name: contour
+  deploy:
+    kustomize:
+      paths:
+      - "contour/"  
+- name: smallstep-ca
+  deploy:
+    helm:
+      releases:
+        - name: "step-certificates"
+          chartPath: "smallstep/step-certificates"
+          remote: true
+          upgradeOnChange: true
+          valuesFiles:
+            - "smallstep/values.yaml"
