@@ -8,7 +8,18 @@ profiles:
   deploy:
     kustomize:
       paths:
-      - "contour/"  
+      - "contour/"
+- name: argocd
+  deploy:
+    kubectl:
+      manifests:
+      - "argocd/namespace.yaml"
+      - "argocd/argocd.yaml"
+      defaultNamespace: argocd
+    kustomize:
+      paths:
+      - "argocd/image-updater"
+      defaultNamespace: argocd
 - name: smallstep-ca
   deploy:
     helm:
