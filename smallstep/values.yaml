@@ -1,0 +1,42 @@
+replicaCount: 1
+
+# ca contains the certificate authority configuration.
+ca:
+  # name is new public key infrastructure (PKI) names.
+  name: Shipperizer Step Certificates
+  # dns is the comma separated dns names to use. Leave it empty to use the format:
+  # {include "step-certificates.fullname" .}.{ .Release.Namespace}.svc.cluster.local,127.0.0.1
+  dns: ca.shipperizer.org
+  # url is the http url where step-certificates will listen at. Leave it empty to use the format
+  # https://{{ include "step-certificates.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  url: https://ca.shipperizer.org/
+  # password is the password used to encrypt the keys. Leave it empty to generate a random one.
+  password:
+  # provisioner contains the step-certificates provisioner configuration.
+  db:
+    # enabled defines if the database is enabled.
+    enabled: true
+    # persistent defines if a Persistent Volume Claim is used, if false and emptyDir will be used.
+    persistent: false
+
+# ingress contains the configuration for an ingress controller.
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: http-issuer
+    ingress.kubernetes.io/protocol: https
+    traefik.ingress.kubernetes.io/rate-limit: |
+        extractorfunc: client.ip
+        rateset:
+          base:
+            period: 10s
+            average: 5
+            burst: 10
+
+  hosts:
+  - host: "ca.shipperizer.org"
+    paths:
+    - "/"
+  tls:
+    - hosts:
+      - "ca.shipperizer.org"
