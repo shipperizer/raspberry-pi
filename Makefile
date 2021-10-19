@@ -1,7 +1,10 @@
-.PHONY=deps up
+.PHONY=deps up istio-install
 
 HELM3?=helm
 SKAFFOLD?=skaffold
+ISTIO_VERSION?=1.11.4
+ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
+TARGET_ARCH?=arm64
 
 .EXPORT_ALL_VARIABLES:
 
@@ -24,3 +27,11 @@ k8s-helpers: apt
 k3s:
 	curl -sfL https://get.k3s.io | sh -
 	echo 'write-kubeconfig-mode: "0644"' | sudo tee /etc/rancher/k3s/config.yaml
+
+istio-install:
+	curl -L https://istio.io/downloadIstio | TARGET_ARCH=$(TARGET_ARCH) ISTIO_VERSION=$(ISTIO_VERSION) sh -
+	$(ISTIOCTL) operator init --hub=docker.io/querycapistio
+	@echo "***run twice as some CRD are not keen on being installed before all is setup***"
+	$(ISTIOCTL) operator init --hub=docker.io/querycapistio
+	@echo "***cert-manager required for the certificate to be deployed***"
+	$(SKAFFOLD) run --profile istio

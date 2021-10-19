@@ -4,6 +4,11 @@ kind: Config
 deploy: {}
 
 profiles:
+- name: istio
+  deploy:
+    kustomize:
+      paths:
+      - "istio/"  
 - name: contour
   deploy:
     kustomize:
