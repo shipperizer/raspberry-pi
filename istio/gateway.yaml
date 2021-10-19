@@ -8,11 +8,17 @@ spec:
     istio: ingressgateway
   servers:
   - port:
-      number: 443
+      number: 40443
       name: https
       protocol: HTTPS
     tls:
       mode: SIMPLE
       credentialName: api-shipperizer-org-tls # This should match the Certificate secretName
     hosts:
-    - api.shipperizer.org
+    - "api.shipperizer.org"    
+  - port:
+      number: 40080
+      name: http
+      protocol: HTTP
+    hosts:
+    - "api.shipperizer.org"  

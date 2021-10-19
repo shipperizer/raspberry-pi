@@ -34,4 +34,6 @@ istio-install:
 	@echo "***run twice as some CRD are not keen on being installed before all is setup***"
 	$(ISTIOCTL) operator init --hub=docker.io/querycapistio
 	@echo "***cert-manager required for the certificate to be deployed***"
-	$(SKAFFOLD) run --profile istio
+	$(SKAFFOLD) run --profile=istio
+	$(SKAFFOLD) run --profile=istio-config
+	kubectl label namespace default istio-injection=enabled --overwrite

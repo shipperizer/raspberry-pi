@@ -1,5 +1,4 @@
 resources:
   - namespace.yaml
   - istio.yaml
-  - certificate.yaml
-  - gateway.yaml
+
