@@ -61,9 +61,8 @@ spec:
     extensionProviders:
     - name: fluffy-octo-telegram-grpc-app
       envoyExtAuthzGrpc:
-        service: fluffy-octo-telegram-grpc-app.default.svc.cluster.local
-        port: 9443
-
+        service: default/fluffy-octo-telegram-grpc-app
+        port: "9443"
   profile: default
   tag: 1.11.4
   values:
