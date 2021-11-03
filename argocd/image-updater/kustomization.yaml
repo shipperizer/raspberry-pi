@@ -3,7 +3,7 @@ kind: Kustomization
 
 images:
 - name: ghcr.io/shipperizer/argocd-image-updater
-  newTag: c83b369
+  newTag: bc8dc2c
 
 bases:
 - ./config
