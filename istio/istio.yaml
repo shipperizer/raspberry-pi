@@ -59,10 +59,10 @@ spec:
       proxyMetadata: {}
     enablePrometheusMerge: true
     extensionProviders:
-    - name: fluffy-octo-telegram-grpc-app
+    - name: fluffy-octo-telegram-grpc-ext-authz
       envoyExtAuthzGrpc:
-        service: default/fluffy-octo-telegram-grpc-app
-        port: "9443"
+        service: fluffy-octo-telegram-grpc-app.default.svc.cluster.local
+        port: "9000"
   profile: default
   tag: 1.11.4
   values:
