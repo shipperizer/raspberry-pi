@@ -5,6 +5,8 @@ SKAFFOLD?=skaffold
 ISTIO_VERSION?=1.11.4
 ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
 TARGET_ARCH?=arm64
+CILIUM?=cilium
+HUBBLE?=hubble
 
 .EXPORT_ALL_VARIABLES:
 
@@ -27,6 +29,11 @@ k8s-helpers: apt
 k3s:
 	curl -sfL https://get.k3s.io | sh -
 	echo 'write-kubeconfig-mode: "0644"' | sudo tee /etc/rancher/k3s/config.yaml
+	echo 'flannel-backend: "none"' | sudo tee /etc/rancher/k3s/config.yaml
+
+cilium:
+	$(CILIUM) install
+	$(CILIUM) hubble enable
 
 istio-install:
 	curl -L https://istio.io/downloadIstio | TARGET_ARCH=$(TARGET_ARCH) ISTIO_VERSION=$(ISTIO_VERSION) sh -

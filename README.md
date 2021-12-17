@@ -29,3 +29,22 @@ echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secre
 ```
  echo '{"auths":{"ghcr.io":{"auth":"****************"}}}' | kubectl create secret generic regcred-github-kaniko --from-file=config.json=/dev/stdin
  ```
+
+
+## Cilium
+
+Follow the steps in [here](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
+
+to install `cilium CLI` and `hubble CLI`
+
+```
+curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-arm64.tar.gz{,.sha256sum}
+sha256sum --check cilium-linux-arm64.tar.gz.sha256sum
+sudo tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
+rm cilium-linux-arm64.tar.gz{,.sha256sum}
+export HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt)
+curl -L --remote-name-all https://github.com/cilium/hubble/releases/download/$HUBBLE_VERSION/hubble-linux-arm64.tar.gz{,.sha256sum}
+sha256sum --check hubble-linux-arm64.tar.gz.sha256sum
+sudo tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
+rm hubble-linux-arm64.tar.gz{,.sha256sum}
+```
