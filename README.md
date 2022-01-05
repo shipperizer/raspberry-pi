@@ -6,29 +6,12 @@
 ** restart `k3s.service` and export `kubeconfig`
 * add various `imagePullSecrets` secrets in `k8s`
 
-
-## Use Contour
-
-* disable `traefik`, see [article here](https://rancher.com/blog/2020/deploy-an-ingress-controllers)
-* run `skaffold run --profile contour`
-* make sure `cert-manager` is installed if you need `tls` ingresses
-* expose `envoy` svc port on the router
-
-## ArgoCD
-
-* create a secret for `image-updater` builds, same as the one needed to pull images (which is in the default namespace):
 ```
-echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secret generic regcred-github --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin -n argocd
+ubectl create secret docker-registry regcred-github --docker-server=https://ghcr.io/ --docker-username=shipperizer --docker-password=<GH_PAT> --docker-email=alexcabb@gmail.com
 ```
-* port forward the service locally and follow the `Getting Started` guide [here](https://argoproj.github.io/argo-cd/getting_started/)
 
-## Kaniko
-
-* create a secret for `kaniko` builds, for this you will need an `Opaque` secret:
-
-```
- echo '{"auths":{"ghcr.io":{"auth":"****************"}}}' | kubectl create secret generic regcred-github-kaniko --from-file=config.json=/dev/stdin
- ```
+* if using `make k3s` cilium will need to be installed before things work properly
+* if wanted to use a public dns, add `--tls-san <dns record>` to have it added to the tls certificate
 
 
 ## Cilium
@@ -48,3 +31,73 @@ sha256sum --check hubble-linux-arm64.tar.gz.sha256sum
 sudo tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
 rm hubble-linux-arm64.tar.gz{,.sha256sum}
 ```
+
+to install in the cluster look at the `Makefile` target `cilium`
+
+## Istio
+
+Here we have 2 options:
+* run `make istio-install` to get istio running via istio-operator, cni-plugin will be installed as well
+* use cilium customized istio (experimental)
+```
+curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-linux-arm64.tar.gz | tar xz
+```
+
+## Cert-Manager
+
+Install cert-manager via `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.2.0/cert-manager.yaml`
+
+
+example of a cluster issuer:
+
+```
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: http-issuer
+spec:
+  acme:
+    email: <username>
+    server: https://acme-v02.api.letsencrypt.org/directory
+    preferredChain: "ISRG Root X1"
+    privateKeySecretRef:
+      name: http-issuer-account-key
+    solvers:
+    - http01:
+       ingress:
+         class: nginx
+```
+
+
+## ArgoCD
+
+* create a secret for `image-updater` builds, same as the one needed to pull images (which is in the default namespace):
+```
+echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secret generic regcred-github --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin -n argocd
+```
+* port forward the service locally and follow the `Getting Started` guide [here](https://argoproj.github.io/argo-cd/getting_started/)
+
+
+* add ssh git creds for image-updater so that it can push commits  
+
+```
+kubectl -n argocd-image-updater create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
+```
+
+## Kaniko
+
+* create a secret for `kaniko` builds, for this you will need an `Opaque` secret:
+
+```
+ echo '{"auths":{"ghcr.io":{"auth":"****************"}}}' | kubectl create secret generic regcred-github-kaniko --from-file=config.json=/dev/stdin
+ ```
+
+
+## Use Contour
+
+* disable `traefik`, see [article here](https://rancher.com/blog/2020/deploy-an-ingress-controllers)
+* run `skaffold run --profile contour`
+* make sure `cert-manager` is installed if you need `tls` ingresses
+* expose `envoy` svc port on the router
+
+
