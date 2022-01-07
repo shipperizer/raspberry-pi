@@ -89,6 +89,16 @@ echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secre
 kubectl -n argocd create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
 ```
 
+* add repos to avoid `ssh agent requested but SSH_AUTH_SOCK not-specified` issue
+
+```
+argocd repo add git@github.com:shipperizer/furry-train.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name furry-train
+argocd repo add git@github.com:shipperizer/fluffy-octo-telegram.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name fluffy-octo-telegram   
+```
+
+and only then create the apps
+
+
 ## Kaniko
 
 * create a secret for `kaniko` builds, for this you will need an `Opaque` secret:

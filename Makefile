@@ -14,7 +14,9 @@ SERVICE_CIDR?=10.43.0.0/16
 DNS_IP?=10.43.0.10
 TLS_SAN?=
 INSTALL_EXEC_COMMAND?="--disable traefik --flannel-backend none --write-kubeconfig-mode 0644 --cluster-cidr $(POD_CIDR) --service-cidr $(SERVICE_CIDR) --cluster-dns $(DNS_IP) $(TLS_SAN)"
-CILIUM_OPTS?=--cluster-name raspberry-1 --cluster-id 1
+CILIUM_NAME?=bomber
+CILIUM_ID?=100
+CILIUM_OPTS?="--cluster-name $(CILIUM_NAME) --cluster-id $(CILIUM_ID) --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict"
 .EXPORT_ALL_VARIABLES:
 
 deps:
