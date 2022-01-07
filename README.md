@@ -23,16 +23,17 @@ to install `cilium CLI` and `hubble CLI`
 ```
 curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-arm64.tar.gz{,.sha256sum}
 sha256sum --check cilium-linux-arm64.tar.gz.sha256sum
-sudo tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
+tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
 rm cilium-linux-arm64.tar.gz{,.sha256sum}
 export HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt)
 curl -L --remote-name-all https://github.com/cilium/hubble/releases/download/$HUBBLE_VERSION/hubble-linux-arm64.tar.gz{,.sha256sum}
 sha256sum --check hubble-linux-arm64.tar.gz.sha256sum
-sudo tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
+tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
 rm hubble-linux-arm64.tar.gz{,.sha256sum}
 ```
 
 to install in the cluster look at the `Makefile` target `cilium`
+
 
 ## Istio
 
@@ -43,9 +44,12 @@ Here we have 2 options:
 curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-linux-arm64.tar.gz | tar xz
 ```
 
+** an ingress class resource will be created so that is easier to generate certs via cert-manager with the `istio` ingress class 
+
+
 ## Cert-Manager
 
-Install cert-manager via `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.2.0/cert-manager.yaml`
+* Install cert-manager via `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.6.1/cert-manager.yaml`
 
 
 example of a cluster issuer:
@@ -65,7 +69,7 @@ spec:
     solvers:
     - http01:
        ingress:
-         class: nginx
+         class: istio
 ```
 
 
