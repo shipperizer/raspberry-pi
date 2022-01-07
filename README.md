@@ -86,7 +86,7 @@ echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secre
 * add ssh git creds for image-updater so that it can push commits  
 
 ```
-kubectl -n argocd-image-updater create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
+kubectl -n argocd create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
 ```
 
 ## Kaniko
