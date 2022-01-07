@@ -1,43 +1,83 @@
-apiVersion: skaffold/v2beta11
+apiVersion: skaffold/v2beta26
 kind: Config
-
-deploy: {}
-
 profiles:
 - name: istio
   deploy:
     kustomize:
       paths:
-      - "istio/"
-- name: istio-config      
+      - istio/
+- name: istio-config
   deploy:
-      kubectl:
-        manifests:
-        - "istio/certificate.yaml"   
-        - "istio/gateway.yaml"   
+    kubectl:
+      manifests:
+      - istio/ingress_class.yaml
+      - istio/cluster_issuer.yaml
+      - istio/certificate.yaml
+      - istio/gateway.yaml
+- name: cert-manager
+  deploy:
+    kubectl:
+      manifests:
+      - https://github.com/jetstack/cert-manager/releases/download/v1.6.1/cert-manager.yaml
 - name: contour
   deploy:
     kustomize:
       paths:
-      - "contour/"
+      - contour/
 - name: argocd
   deploy:
     kubectl:
       manifests:
-      - "argocd/namespace.yaml"
-      - "argocd/argocd.yaml"
+      - argocd/namespace.yaml
+      - argocd/argocd.yaml
       defaultNamespace: argocd
     kustomize:
       paths:
-      - "argocd/image-updater"
+      - argocd/image-updater
       defaultNamespace: argocd
+- name: argo
+  deploy:
+    kubectl:
+      manifests:
+      - https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+- name: argo-dataflow
+  deploy:
+    kubectl:
+      manifests:
+      - https://raw.githubusercontent.com/argoproj-labs/argo-dataflow/main/config/quick-start.yaml
+      - https://raw.githubusercontent.com/argoproj-labs/argo-dataflow/main/config/apps/argo-server.yaml
+      defaultNamespace: argo-dataflow-system
 - name: smallstep-ca
   deploy:
     helm:
       releases:
-        - name: "step-certificates"
-          chartPath: "smallstep/step-certificates"
-          remote: true
-          upgradeOnChange: true
-          valuesFiles:
-            - "smallstep/values.yaml"
+      - name: step-certificates
+        remoteChart: smallstep/step-certificates
+        valuesFiles:
+        - smallstep/values.yaml
+        upgradeOnChange: true
+- name: loki
+  deploy:
+    helm:
+      releases:
+      - name: loki
+        remoteChart: grafana/loki
+        upgradeOnChange: true
+        namespace: kube-public
+      - name: promtail
+        remoteChart: grafana/promtail
+        upgradeOnChange: true
+        namespace: kube-public
+- name: cilium
+  deploy:
+    helm:
+      releases:
+      - name: cilium
+        remoteChart: cilium/cilium 
+        version: "1.11.0"
+        valuesFiles:
+        - cilium/values.yaml  
+        namespace: kube-public     
+    kubectl:
+      manifests:
+      - https://raw.githubusercontent.com/cilium/cilium/v1.11/examples/kubernetes/clustermesh/cilium-etcd-external-service/cilium-etcd-external-nodeport.yaml    
