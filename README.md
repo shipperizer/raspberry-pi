@@ -23,12 +23,12 @@ to install `cilium CLI` and `hubble CLI`
 ```
 curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-arm64.tar.gz{,.sha256sum}
 sha256sum --check cilium-linux-arm64.tar.gz.sha256sum
-tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
+sudo tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
 rm cilium-linux-arm64.tar.gz{,.sha256sum}
 export HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt)
 curl -L --remote-name-all https://github.com/cilium/hubble/releases/download/$HUBBLE_VERSION/hubble-linux-arm64.tar.gz{,.sha256sum}
 sha256sum --check hubble-linux-arm64.tar.gz.sha256sum
-tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
+sudo tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
 rm hubble-linux-arm64.tar.gz{,.sha256sum}
 ```
 
@@ -46,6 +46,7 @@ curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl
 
 ** an ingress class resource will be created so that is easier to generate certs via cert-manager with the `istio` ingress class 
 
+** for the cm-acme-solver to work, its service port will have to be exposed via the router for the certificate challenge to be accepted, once done revert to open the gateway port 80 
 
 ## Cert-Manager
 
