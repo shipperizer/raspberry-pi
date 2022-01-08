@@ -54,8 +54,16 @@ profiles:
       - name: step-certificates
         remoteChart: smallstep/step-certificates
         valuesFiles:
-        - smallstep/values.yaml
-        upgradeOnChange: true
+        - smallstep/step-ca.yaml
+        namespace: istio-system
+      - name: step-issuer
+        remoteChart: smallstep/step-issuer
+        namespace: istio-system
+        valuesFiles:
+        - smallstep/step-issuer.yaml
+    kubectl:
+      manifests:
+      - smallstep/networking.yaml
 - name: loki
   deploy:
     helm:

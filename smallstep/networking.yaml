@@ -1,0 +1,53 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ca-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 41443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: PASSTHROUGH
+    hosts:
+    - ca.shipperizer.org
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: step-certificates
+  namespace: ca
+spec:
+  hosts:
+  - ca.shipperizer.org
+  gateways:
+  - ca-gateway
+  exportTo:
+  - "."
+  tls:
+  - match:
+    - port: 443
+      sniHosts:
+      - ca.shipperizer.org
+    route:
+    - destination:
+        host: step-certificates
+        port:
+          number: 443
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: step-certificates
+  namespace: ca
+spec:
+  host: step-certificates
+  exportTo:
+  - "."
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
