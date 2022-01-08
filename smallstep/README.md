@@ -17,5 +17,31 @@ Patch `configmap` with `ca.json` with https://github.com/smallstep/certificates/
 
 Run:
 
-```kubectl get configmaps step-certificates-certs -o json | jq '.data["root_ca.crt"]' -r > root_ca.crt
+```
+kubectl get configmaps step-certificates-certs -o json | jq '.data["root_ca.crt"]' -r > root_ca.crt
+```
+
+
+Refer to https://smallstep.com/blog/istio-with-private-ca/ and follow steps
+
+```
+kubectl get -o jsonpath="{.data['root_ca\.crt']}" configmaps/step-certificates-certs -n istio-system | tr -d '\n' | base64
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX==
+acabbia@ldcl141282m  on  main!16:45:16 π  kubectl get -o jsonpath="{.data['ca\.json']}" configmaps/step-certificates-config -n istio-system | jq .authority.provisioners
+[
+  {
+    "type": "JWK",
+    "name": "admin",
+    "key": {
+      "use": "sig",
+      "kty": "EC",
+      "kid": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "crv": "P-256",
+      "alg": "ES256",
+      "x": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "y": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    },
+    "encryptedKey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  }
+]
 ```
