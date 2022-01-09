@@ -55,10 +55,12 @@ profiles:
         remoteChart: smallstep/step-certificates
         valuesFiles:
         - smallstep/step-ca.yaml
-        namespace: istio-system
+        namespace: ca
+        createNamespace: true
       - name: step-issuer
         remoteChart: smallstep/step-issuer
-        namespace: istio-system
+        namespace: ca
+        createNamespace: true
         valuesFiles:
         - smallstep/step-issuer.yaml
     kubectl:

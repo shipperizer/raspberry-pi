@@ -4,6 +4,7 @@ HELM3?=helm
 SKAFFOLD?=skaffold
 ISTIO_VERSION?=1.11.4
 ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
+KUBECTL?=kubectl
 TARGET_ARCH?=arm64
 ARCH?=linux-arm64
 CILIUM?=cilium
@@ -13,10 +14,10 @@ POD_CIDR?=10.42.0.0/16
 SERVICE_CIDR?=10.43.0.0/16
 DNS_IP?=10.43.0.10
 TLS_SAN?=
-INSTALL_EXEC_COMMAND?="--disable traefik --flannel-backend none --write-kubeconfig-mode 0644 --cluster-cidr $(POD_CIDR) --service-cidr $(SERVICE_CIDR) --cluster-dns $(DNS_IP) $(TLS_SAN)"
+INSTALL_EXEC_COMMAND?="--disable traefik --flannel-backend none --write-kubeconfig-mode 0644 --cluster-cidr $(POD_CIDR) --service-cidr $(SERVICE_CIDR) --cluster-dns $(DNS_IP) --disable-network-policy $(TLS_SAN)"
 CILIUM_NAME?=bomber
 CILIUM_ID?=100
-CILIUM_OPTS?="--cluster-name $(CILIUM_NAME) --cluster-id $(CILIUM_ID) --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict"
+CILIUM_OPTS?=--cluster-name $(CILIUM_NAME) --cluster-id $(CILIUM_ID)
 .EXPORT_ALL_VARIABLES:
 
 deps:
@@ -49,10 +50,13 @@ k3s:
 test:
 	echo INSTALL_K3S_EXEC=$(INSTALL_EXEC_COMMAND)
 
-cilium:
+cilium-install:
 	$(CILIUM) install $(CILIUM_OPTS) --wait
-	$(CILIUM) clustermesh enable --service-type NodePort
+	$(CILIUM) clustermesh enable --service-type LoadBalancer
 	$(CILIUM) hubble enable --ui
+#	echo "run the following"
+#	echo "$(KUBECTL) patch deployments.apps -n kube-system cilium-operator --patch \"$(cat cilium/operator.yaml)\""
+#	echo "$(KUBECTL) patch daemonset -n kube-system cilium --patch \"$(cat cilium/agent.yaml)\""
 
 # cilium-istio:
 # 	curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-$(ARCH).tar.gz | tar xz
