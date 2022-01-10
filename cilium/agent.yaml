@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "1"
+  labels:
+    k8s-app: cilium
+  name: cilium
+  namespace: kube-system
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  template:
+    spec:
+      containers:
+      - name: cilium-agent
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "192.168.86.113"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "6443"
+      initContainers:    
+      - name: clean-cilium-state
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "192.168.86.113"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "6443"       

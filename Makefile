@@ -30,7 +30,7 @@ deps:
 apt:
 	@echo "***install apt dependencies***"
 	apt update
-	apt install docker.io git build-essential python3-pip apt-transport-https ca-certificates curl
+	apt install linux-modules-extra-raspi git build-essential python3 apt-transport-https ca-certificates
 
 k8s-helpers: apt
 	pip3 install httpie
