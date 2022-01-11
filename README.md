@@ -1,20 +1,31 @@
 # RaspberryPI setup
 
 * install `Ubuntu Server 64bit` via `raspberryPi Imager`
+** `arch linux arm64 (aarch64)` seems to have seldom issues running k3s port-forwarding, with or without cilium, and internal traffic
+```
+acabbia@ldcl141282m  on  main!11:56:51 π  k port-forward -n kube-system traefik-786ff64748-4vxfs 18000:80
+Forwarding from 127.0.0.1:18000 -> 80
+Forwarding from [::1]:18000 -> 80
+Handling connection for 18000
+E0110 11:57:39.031624   47090 portforward.go:400] an error occurred forwarding 18000 -> 80: error forwarding port 80 to pod b5e6e7b88286ae845a9b8e3ff121af854ebaf3f9f3039c66ac23ce3e82a6ccfc, uid : failed to execute portforward in network namespace "/var/run/netns/cni-c9e4d36b-741f-c613-7635-96135e5b93b0": failed to connect to localhost:80 inside namespace "b5e6e7b88286ae845a9b8e3ff121af854ebaf3f9f3039c66ac23ce3e82a6ccfc", IPv4: dial tcp4: lookup localhost: Try again IPv6 dial tcp6: lookup localhost: Try again 
+E0110 12:02:35.955932   47090 portforward.go:233] lost connection to pod
+```
 * check Makefile `apt` target to install dependencies
 * run `k3s` target to install K3s
 ** restart `k3s.service` and export `kubeconfig`
 * add various `imagePullSecrets` secrets in `k8s`
 
 ```
-ubectl create secret docker-registry regcred-github --docker-server=https://ghcr.io/ --docker-username=shipperizer --docker-password=<GH_PAT> --docker-email=alexcabb@gmail.com
+kubectl create secret docker-registry regcred-github --docker-server=https://ghcr.io/ --docker-username=shipperizer --docker-password=<GH_PAT> --docker-email=alexcabb@gmail.com
 ```
 
 * if using `make k3s` cilium will need to be installed before things work properly
 * if wanted to use a public dns, add `--tls-san <dns record>` to have it added to the tls certificate
-
+* if `cilium` is wanted look at https://docs.cilium.io/en/v1.11/gettingstarted/k3s/#install-a-master-node options 
 
 ## Cilium
+
+**Install `linux-modules-extra-raspi` on ubuntu**
 
 Follow the steps in [here](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
 
@@ -33,6 +44,15 @@ rm hubble-linux-arm64.tar.gz{,.sha256sum}
 ```
 
 to install in the cluster look at the `Makefile` target `cilium`
+
+see [install requirements](https://docs.cilium.io/en/stable/operations/system_requirements/) if having issues
+
+mainly this if running on latest arch linux
+```
+echo 'net.ipv4.conf.lxc*.rp_filter = 0' > /etc/sysctl.d/99-override_cilium_rp_filter.conf
+systemctl restart systemd-sysctl
+
+```
 
 
 ## Istio
