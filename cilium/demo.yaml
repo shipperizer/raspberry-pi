@@ -1,0 +1,71 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deathstar
+  labels:
+    app.kubernetes.io/name: deathstar
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    org: empire
+    class: deathstar
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deathstar
+  labels:
+    app.kubernetes.io/name: deathstar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      org: empire
+      class: deathstar
+  template:
+    metadata:
+      labels:
+        org: empire
+        class: deathstar
+        app.kubernetes.io/name: deathstar
+    spec:
+      imagePullSecrets: 
+      - name: regcred-github
+      containers:
+      - name: deathstar
+        image: ghcr.io/shipperizer/starwars-docker:25d2b2f
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tiefighter
+  labels:
+    org: empire
+    class: tiefighter
+    app.kubernetes.io/name: tiefighter
+spec:
+  imagePullSecrets: 
+  - name: regcred-github
+  containers:
+  - name: spaceship
+    image: ghcr.io/shipperizer/netperf-docker:84c908d-arm64-manual
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: xwing
+  labels:
+    app.kubernetes.io/name: xwing
+    org: alliance
+    class: xwing
+spec:
+  imagePullSecrets: 
+  - name: regcred-github
+  containers:
+  - name: spaceship
+    image: ghcr.io/shipperizer/netperf-docker:84c908d-arm64-manual

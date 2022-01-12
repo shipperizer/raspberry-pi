@@ -1,0 +1,16 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "allow-cross-cluster"
+spec:
+  description: "Allow x-wing in cluster1 to contact rebel-base in cluster2"
+  endpointSelector:
+    matchLabels:
+      name: x-wing
+      io.cilium.k8s.policy.cluster: bomber
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: rebel-base
+        io.cilium.k8s.policy.cluster: bonkers
+
