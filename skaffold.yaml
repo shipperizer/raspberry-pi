@@ -24,6 +24,17 @@ profiles:
     kustomize:
       paths:
       - contour/
+- name: oauth2-proxy
+  deploy:
+    helm:
+      releases:
+      - name: oauth2-proxy
+        remoteChart: oauth2-proxy/oauth2-proxy
+        version: "7.7.28"
+        valuesFiles:
+        - oauth2-proxy/values.yaml  
+        upgradeOnChange: true
+        namespace: default
 - name: argocd
   deploy:
     kubectl:

@@ -25,6 +25,7 @@ deps:
 	$(HELM3) repo add cilium https://helm.cilium.io/
 	$(HELM3) repo add smallstep  https://smallstep.github.io/helm-charts
 	$(HELM3) repo add grafana https://grafana.github.io/helm-charts
+	$(HELM3) repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
 	$(HELM3) repo update
 
 apt:
