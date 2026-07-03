@@ -18,7 +18,8 @@ profiles:
   deploy:
     kubectl:
       manifests:
-      - https://github.com/jetstack/cert-manager/releases/download/v1.6.1/cert-manager.yaml
+      - https://github.com/cert-manager/cert-manager/releases/download/v1.15.1/cert-manager.yaml
+      - cert-manager/cluster_issuer.yaml
 - name: contour
   deploy:
     kustomize:
@@ -78,16 +79,3 @@ profiles:
         remoteChart: grafana/promtail
         upgradeOnChange: true
         namespace: kube-public
-- name: cilium
-  deploy:
-    helm:
-      releases:
-      - name: cilium
-        remoteChart: cilium/cilium 
-        version: "1.11.0"
-        valuesFiles:
-        - cilium/values.yaml  
-        namespace: kube-public     
-    kubectl:
-      manifests:
-      - https://raw.githubusercontent.com/cilium/cilium/v1.11/examples/kubernetes/clustermesh/cilium-etcd-external-service/cilium-etcd-external-nodeport.yaml    
