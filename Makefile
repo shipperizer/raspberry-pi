@@ -1,8 +1,9 @@
-.PHONY=deps up istio-install
+.PHONY: deps apt k8s-helpers k3s k0s-install test cilium-cli-install cilium-install istio-install loki cert-manager-install
 
 HELM3?=helm
 SKAFFOLD?=skaffold
 ISTIO_VERSION?=1.11.4
+CERT_MANAGER_VERSION?=v1.15.1
 ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
 KUBECTL?=kubectl
 ARCH?=arm64
@@ -17,7 +18,7 @@ KUBE_PROXY?=
 INSTALL_EXEC_COMMAND?="--disable traefik --flannel-backend none --write-kubeconfig-mode 0644 --cluster-cidr $(POD_CIDR) --service-cidr $(SERVICE_CIDR) --cluster-dns $(DNS_IP) --disable-network-policy $(TLS_SAN) $(KUBE_PROXY)"
 CILIUM_NAME?=bomber
 CILIUM_ID?=100
-CILIUM_OPTS?=--cluster-name $(CILIUM_NAME) --cluster-id $(CILIUM_ID) --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict
+CILIUM_OPTS?=--name $(CILIUM_NAME) --cluster-id $(CILIUM_ID) # --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict
 
 .EXPORT_ALL_VARIABLES:
 
@@ -35,19 +36,42 @@ apt:
 k8s-helpers: apt
 	pip3 install httpie
 
+k0s-install:
+	curl -sSLf https://get.k0s.sh | sudo sh
+	sudo mkdir -p /etc/k0s
+	k0s config create | sudo tee /etc/k0s/k0s.yaml > /dev/null
+	sudo python3 -c "import sys, re; \
+		c = open('/etc/k0s/k0s.yaml').read(); \
+		c = re.sub(r'telemetry:\s*\n\s*enabled:\s*true', 'telemetry:\n    enabled: false', c); \
+		c = re.sub(r'provider:\s*\S+', 'provider: custom\n    kubeProxy:\n      disabled: true', c); \
+		open('/etc/k0s/k0s.yaml', 'w').write(c)"
+	sudo k0s install controller --single -c /etc/k0s/k0s.yaml
+	sudo k0s start
+
 k3s:
 	curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC=$(INSTALL_EXEC_COMMAND) sh -s -
 
 test:
 	echo INSTALL_K3S_EXEC=$(INSTALL_EXEC_COMMAND)
 
+cilium-cli-install:
+	curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-$(ARCH).tar.gz{,.sha256sum}
+	sha256sum --check cilium-linux-$(ARCH).tar.gz.sha256sum
+	sudo tar xzvfC cilium-linux-$(ARCH).tar.gz /usr/local/bin
+	rm cilium-linux-$(ARCH).tar.gz{,.sha256sum}
+
 cilium-install:
-	$(CILIUM) install $(CILIUM_OPTS) --wait
-	echo "run the following"
-	echo "$(KUBECTL) patch deployments.apps -n kube-system cilium-operator --patch \"$(cat cilium/operator.yaml)\""
-	echo "$(KUBECTL) patch daemonset -n kube-system cilium --patch \"$(cat cilium/agent.yaml)\""
-	echo "$(CILIUM) clustermesh enable --service-type LoadBalancer"
-	echo "$(CILIUM) hubble enable --ui"
+	$(KUBECTL) apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml
+	$(CILIUM) install $(CILIUM_OPTS) \
+		--helm-set gatewayAPI.enabled=true \
+		--helm-set gatewayAPI.hostNetwork.enabled=false \
+		--helm-set gatewayAPI.service.type=NodePort \
+		--helm-set ingressController.enabled=true \
+		--helm-set ingressController.loadbalancerMode=shared \
+		--helm-set ingressController.service.type=NodePort \
+		--helm-set ingressController.service.insecureNodePort=30080 \
+		--helm-set ingressController.service.secureNodePort=30443 \
+		--wait
 
 # cilium-istio:
 # 	curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-$(ARCH).tar.gz | tar xz
@@ -73,3 +97,9 @@ istio-install:
 
 loki:
 	$(SKAFFOLD) run --profile loki
+
+cert-manager-install:
+	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml
+	$(KUBECTL) wait --for=condition=Available --timeout=300s deployment/cert-manager-webhook -n cert-manager
+	$(KUBECTL) apply -f cert-manager/cluster_issuer.yaml
+
