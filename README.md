@@ -1,138 +1,196 @@
-# RaspberryPI setup
+# Raspberry Pi 4B Single-Node Setup: k0s, Cilium, Gateway API & cert-manager
 
-* install `Ubuntu Server 64bit` via `raspberryPi Imager`
-** `arch linux arm64 (aarch64)` seems to have seldom issues running k3s port-forwarding, with or without cilium, and internal traffic
-```
-acabbia@ldcl141282m  on  main!11:56:51 π  k port-forward -n kube-system traefik-786ff64748-4vxfs 18000:80
-Forwarding from 127.0.0.1:18000 -> 80
-Forwarding from [::1]:18000 -> 80
-Handling connection for 18000
-E0110 11:57:39.031624   47090 portforward.go:400] an error occurred forwarding 18000 -> 80: error forwarding port 80 to pod b5e6e7b88286ae845a9b8e3ff121af854ebaf3f9f3039c66ac23ce3e82a6ccfc, uid : failed to execute portforward in network namespace "/var/run/netns/cni-c9e4d36b-741f-c613-7635-96135e5b93b0": failed to connect to localhost:80 inside namespace "b5e6e7b88286ae845a9b8e3ff121af854ebaf3f9f3039c66ac23ce3e82a6ccfc", IPv4: dial tcp4: lookup localhost: Try again IPv6 dial tcp6: lookup localhost: Try again 
-E0110 12:02:35.955932   47090 portforward.go:233] lost connection to pod
-```
-* check Makefile `apt` target to install dependencies
-* run `k3s` target to install K3s
-** restart `k3s.service` and export `kubeconfig`
-* add various `imagePullSecrets` secrets in `k8s`
+This repository provides manifests and a [Makefile](file:///home/alarm/shipperizer/raspberry-pi/Makefile) to configure and deploy a single-node Kubernetes cluster on a Raspberry Pi 4B (arm64) using **k0s** and **Cilium** with the modern **Gateway API**.
+
+---
+
+## Architecture Overview
 
 ```
-kubectl create secret docker-registry regcred-github --docker-server=https://ghcr.io/ --docker-username=shipperizer --docker-password=<GH_PAT> --docker-email=alexcabb@gmail.com
+                      +-----------------------------+
+                      |         Home Router         |
+                      |  Exposes ports 80 & 443     |
+                      +--------------+--------------+
+                                     |
+                         Port 80     |     Port 443
+                     (HTTP Challenge)|  (Secure Traffic)
+                                     v
+                      +--------------+--------------+
+                      |      Raspberry Pi Node      |
+                      |  Forward Port 80  -> 30080  |
+                      |  Forward Port 443 -> 30443  |
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +--------------+--------------+
+                      |   Cilium Ingress Service    |
+                      |  (NodePort Shared mode)     |
+                      |   HTTP: 30080, HTTPS: 30443 |
+                      +--------------+--------------+
+                                     |
+                                     | (Gateway API / Routing)
+                                     v
+                     +---------------+---------------+
+                     |                               |
+                     v                               v
+            +--------+-------+             +---------+-------+
+            |   deathstar    |             |     xwing       |
+            | (Service: Port |             | (Service: Port  |
+            |      80)       |             |      80)        |
+            +----------------+             +-----------------+
 ```
 
-* if using `make k3s` cilium will need to be installed before things work properly
-* if wanted to use a public dns, add `--tls-san <dns record>` to have it added to the tls certificate
-* if `cilium` is wanted look at https://docs.cilium.io/en/v1.11/gettingstarted/k3s/#install-a-master-node options 
+---
 
-## Cilium
+## 1. Prerequisites & System Preparation
 
-**Install `linux-modules-extra-raspi` on ubuntu**
+1. Install **Ubuntu Server 64-bit (aarch64)** on your Raspberry Pi 4B.
+2. Install necessary kernel modules and tools:
+   ```bash
+   make apt
+   ```
+   This installs `linux-modules-extra-raspi` (mandatory for Cilium eBPF functionalities on Raspberry Pi kernels), `git`, `build-essential`, and `python3`.
 
-Follow the steps in [here](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
+3. Ensure systemd-sysctl uses the correct rp_filter settings if running on latest Arch/Ubuntu distributions:
+   ```bash
+   echo 'net.ipv4.conf.lxc*.rp_filter = 0' | sudo tee /etc/sysctl.d/99-override_cilium_rp_filter.conf
+   sudo systemctl restart systemd-sysctl
+   ```
 
-to install `cilium CLI` and `hubble CLI`
+---
 
-```
-curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-arm64.tar.gz{,.sha256sum}
-sha256sum --check cilium-linux-arm64.tar.gz.sha256sum
-sudo tar xzvfC cilium-linux-arm64.tar.gz /usr/local/bin
-rm cilium-linux-arm64.tar.gz{,.sha256sum}
-export HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt)
-curl -L --remote-name-all https://github.com/cilium/hubble/releases/download/$HUBBLE_VERSION/hubble-linux-arm64.tar.gz{,.sha256sum}
-sha256sum --check hubble-linux-arm64.tar.gz.sha256sum
-sudo tar xzvfC hubble-linux-arm64.tar.gz /usr/local/bin
-rm hubble-linux-arm64.tar.gz{,.sha256sum}
-```
+## 2. Bootstrapping k0s Single-Node Cluster
 
-to install in the cluster look at the `Makefile` target `cilium`
+We boot a single-node k0s cluster configured to allow a custom CNI and optimized for a low memory footprint (ideal for a Raspberry Pi 4B).
 
-see [install requirements](https://docs.cilium.io/en/stable/operations/system_requirements/) if having issues
+### Memory Optimization & Configuration
+* **No Telemetry**: Disabled to save CPU and bandwidth.
+* **No kube-proxy**: Disabled completely to allow Cilium to run in `kube-proxy-replacement` mode, saving significant memory.
+* **Custom Network Provider**: Set to `custom` in [k0s.yaml](file:///etc/k0s/k0s.yaml) to prevent the installation of default CNI plugins (e.g. Kube-Router or Calico), preparing the cluster for Cilium.
 
-mainly this if running on latest arch linux
-```
-echo 'net.ipv4.conf.lxc*.rp_filter = 0' > /etc/sysctl.d/99-override_cilium_rp_filter.conf
-systemctl restart systemd-sysctl
-
+Run the installer target:
+```bash
+make k0s-install
 ```
 
-
-## Istio
-
-Here we have 2 options:
-* run `make istio-install` to get istio running via istio-operator, cni-plugin will be installed as well
-* use cilium customized istio (experimental)
-```
-curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-linux-arm64.tar.gz | tar xz
+### Accessing the Cluster
+Extract the administrative kubeconfig:
+```bash
+mkdir -p ~/.kube
+sudo k0s kubeconfig admin | tee ~/.kube/config > /dev/null
+chmod 600 ~/.kube/config
 ```
 
-** an ingress class resource will be created so that is easier to generate certs via cert-manager with the `istio` ingress class 
+---
 
-** for the cm-acme-solver to work, its service port will have to be exposed via the router for the certificate challenge to be accepted, once done revert to open the gateway port 80 
+## 3. Installing Cilium CLI and CNI
 
-## Cert-Manager
-
-* Install cert-manager via `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.6.1/cert-manager.yaml`
-
-
-example of a cluster issuer:
-
-```
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: http-issuer
-spec:
-  acme:
-    email: <username>
-    server: https://acme-v02.api.letsencrypt.org/directory
-    preferredChain: "ISRG Root X1"
-    privateKeySecretRef:
-      name: http-issuer-account-key
-    solvers:
-    - http01:
-       ingress:
-         class: istio
+### Step A: Install Cilium CLI
+Download and install the latest ARM64 binary:
+```bash
+make cilium-cli-install
 ```
 
-
-## ArgoCD
-
-* create a secret for `image-updater` builds, same as the one needed to pull images (which is in the default namespace):
-```
-echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secret generic regcred-github --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin -n argocd
-```
-* port forward the service locally and follow the `Getting Started` guide [here](https://argoproj.github.io/argo-cd/getting_started/)
-
-
-* add ssh git creds for image-updater so that it can push commits  
-
-```
-kubectl -n argocd create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
+### Step B: Deploy Cilium
+Deploy Cilium with Gateway API enabled, using `NodePort` instead of a cloud load balancer, and disabling the `hostNetwork` to route traffic cleanly:
+```bash
+make cilium-install
 ```
 
-* add repos to avoid `ssh agent requested but SSH_AUTH_SOCK not-specified` issue
+This target:
+1. Applies the **Gateway API CRDs** (v1.1.0 standard-install.yaml).
+2. Deploys Cilium with the following options:
+   * `gatewayAPI.enabled=true`: Enables support for Gateway API resources.
+   * `ingressController.enabled=true` and `ingressController.loadbalancerMode=shared`: Enables the shared L7 Ingress/Gateway Envoy engine.
+   * `ingressController.service.type=NodePort`: Exposes the ingress controller using Kubernetes NodePort services.
+   * `ingressController.service.insecureNodePort=30080`: Binds the insecure HTTP ingress listener to fixed NodePort 30080.
+   * `ingressController.service.secureNodePort=30443`: Binds the secure HTTPS ingress listener to fixed NodePort 30443.
+   * `ingressController.hostNetwork.enabled=false`: Disables host networking for the ingress controller to prevent port conflicts on the host.
 
+---
+
+## 4. Cert-Manager Setup & ACME HTTP-01 Challenges
+
+### Installing cert-manager
+Install cert-manager and wait for its webhook service to start:
+```bash
+make cert-manager-install
 ```
-argocd repo add git@github.com:shipperizer/furry-train.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name furry-train
-argocd repo add git@github.com:shipperizer/fluffy-octo-telegram.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name fluffy-octo-telegram   
+
+This applies the [cluster_issuer.yaml](file:///home/alarm/shipperizer/raspberry-pi/cert-manager/cluster_issuer.yaml) which defines staging and production Let's Encrypt `ClusterIssuers` configured to use the Cilium Ingress solver:
+```yaml
+solvers:
+- http01:
+    ingress:
+      ingressClassName: cilium
 ```
 
-and only then create the apps
+### Reliable Port-Forwarding Strategy
+Because your Raspberry Pi is hosted inside a private home network behind a NAT router:
+1. Let's Encrypt requires port `80` to be reachable from the internet for the `HTTP-01` challenge validation.
+2. Setup **Port Forwarding** on your home internet router:
+   * Forward incoming WAN port **80** to the Raspberry Pi node's IP on LAN port **30080**.
+   * Forward incoming WAN port **443** to the Raspberry Pi node's IP on LAN port **30443**.
+3. When cert-manager generates a temporary Ingress solver to answer the HTTP-01 challenge, Cilium routes the traffic arriving on port `30080` (forwarded from external `80`) to the solver pod, allowing Let's Encrypt to verify domain ownership and issue the certificate successfully.
 
+---
 
-## Kaniko
+## 5. Gateway and HTTPRoute Deployment
 
-* create a secret for `kaniko` builds, for this you will need an `Opaque` secret:
+Once Cilium and cert-manager are running, apply the Gateway and HTTPRoute manifests:
 
+### A. Deploy the Gateway
+Apply [gateway.yaml](file:///home/alarm/shipperizer/raspberry-pi/cilium/gateway.yaml):
+```bash
+kubectl apply -f cilium/gateway.yaml
 ```
- echo '{"auths":{"ghcr.io":{"auth":"****************"}}}' | kubectl create secret generic regcred-github-kaniko --from-file=config.json=/dev/stdin
- ```
+This deploys a `Gateway` utilizing `gatewayClassName: cilium` that listens on port `80` (HTTP) and port `443` (HTTPS with TLS termination pointing to secret `cilium-gateway-tls`).
 
+### B. Deploy HTTPRoutes
+Apply [httproutes.yaml](file:///home/alarm/shipperizer/raspberry-pi/cilium/httproutes.yaml):
+```bash
+kubectl apply -f cilium/httproutes.yaml
+```
+This routes paths:
+* `/deathstar` to the `deathstar` service.
+* `/xwing` to the `xwing` service.
 
-## Use Contour
+---
 
-* disable `traefik`, see [article here](https://rancher.com/blog/2020/deploy-an-ingress-controllers)
-* run `skaffold run --profile contour`
-* make sure `cert-manager` is installed if you need `tls` ingresses
-* expose `envoy` svc port on the router
+## 6. ArgoCD
 
+* Create a secret for `image-updater` builds (matching default namespace pull credentials):
+  ```bash
+  echo '{"auths":{"ghcr.io":{"auth":"*****************"}}}' | kubectl create secret generic regcred-github --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin -n argocd
+  ```
+* Port-forward the service locally and follow the ArgoCD getting started guide.
+* Setup SSH Git credentials for image-updater:
+  ```bash
+  kubectl -n argocd create secret generic git-creds --from-file=sshPrivateKey=<path/to/id_rsa>
+  ```
+* Register SSH repository links:
+  ```bash
+  argocd repo add git@github.com:shipperizer/furry-train.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name furry-train
+  argocd repo add git@github.com:shipperizer/fluffy-octo-telegram.git --ssh-private-key-path ~/.ssh/bomber_id_ed25519 --name fluffy-octo-telegram   
+  ```
 
+---
+
+## 7. Kaniko
+
+Create an opaque secret for container registry credentials:
+```bash
+echo '{"auths":{"ghcr.io":{"auth":"****************"}}}' | kubectl create secret generic regcred-github-kaniko --from-file=config.json=/dev/stdin
+```
+
+---
+
+## 8. Contour Ingress (Alternative)
+
+If you prefer Contour:
+1. Disable Traefik/Cilium ingress.
+2. Deploy Contour via Skaffold:
+   ```bash
+   skaffold run --profile contour
+   ```
+3. Expose the Envoy service port on your router.
