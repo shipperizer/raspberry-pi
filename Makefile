@@ -67,7 +67,7 @@ cilium-install:
 		--helm-set gatewayAPI.enabled=true \
 		--helm-set gatewayAPI.hostNetwork.enabled=false \
 		--helm-set gatewayAPI.service.type=NodePort \
-		--helm-set ingressController.enabled=true \
+		--helm-set ingressController.enabled=false \
 		--helm-set ingressController.loadbalancerMode=shared \
 		--helm-set ingressController.service.type=NodePort \
 		--helm-set ingressController.service.insecureNodePort=30080 \
