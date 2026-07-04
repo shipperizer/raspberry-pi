@@ -1,0 +1,22 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumGatewayClassConfig
+metadata:
+  name: cilium-gateway-config
+  namespace: kube-system
+spec:
+  service:
+    type: NodePort
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: cilium
+  annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  controllerName: io.cilium/gateway-controller
+  parametersRef:
+    group: cilium.io
+    kind: CiliumGatewayClassConfig
+    name: cilium-gateway-config
+    namespace: kube-system

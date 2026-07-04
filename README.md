@@ -97,20 +97,27 @@ make cilium-cli-install
 ```
 
 ### Step B: Deploy Cilium
-Deploy Cilium with Gateway API enabled, using `NodePort` instead of a cloud load balancer, and disabling the `hostNetwork` to route traffic cleanly:
+Deploy Cilium with Gateway API and L2 Announcements enabled, using a local LoadBalancer IP pool and L2 ARP advertisements:
 ```bash
 make cilium-install
 ```
 
 This target:
-1. Applies the **Gateway API CRDs** (v1.1.0 standard-install.yaml).
+1. Applies the **Gateway API CRDs**.
 2. Deploys Cilium with the following options:
+   * `kubeProxyReplacement=true`: Enables eBPF-based kube-proxy replacement, which is required for Gateway API.
+   * `l2announcements.enabled=true`: Enables Cilium to answer ARP requests for LoadBalancer IPs.
    * `gatewayAPI.enabled=true`: Enables support for Gateway API resources.
-   * `ingressController.enabled=true` and `ingressController.loadbalancerMode=shared`: Enables the shared L7 Ingress/Gateway Envoy engine.
-   * `ingressController.service.type=NodePort`: Exposes the ingress controller using Kubernetes NodePort services.
-   * `ingressController.service.insecureNodePort=30080`: Binds the insecure HTTP ingress listener to fixed NodePort 30080.
-   * `ingressController.service.secureNodePort=30443`: Binds the secure HTTPS ingress listener to fixed NodePort 30443.
-   * `ingressController.hostNetwork.enabled=false`: Disables host networking for the ingress controller to prevent port conflicts on the host.
+   * `gatewayAPI.hostNetwork.enabled=false`: Disables host networking for the Gateway proxy.
+   * `gatewayAPI.service.type=LoadBalancer`: Uses LoadBalancer services for Gateways.
+3. Applies `cilium/l2-announcements.yaml` to define the LoadBalancer IP pool (`192.168.86.30-192.168.86.35`) and the L2 Announcement Policy.
+4. Applies `cilium/certificate.yaml` to request the Let's Encrypt production SSL certificate for the domain.
+
+> [!NOTE]
+> If you need the HTTP/HTTPS listeners to use specific static NodePorts (e.g. `30080` and `30443` to match your home router's port forwarding), you can patch the generated Gateway service after deployment:
+> ```bash
+> kubectl patch svc cilium-gateway-orbo-mate-gateway -n default --type='json' -p='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value": 30080},{"op": "replace", "path": "/spec/ports/1/nodePort", "value": 30443}]'
+> ```
 
 ---
 

@@ -19,7 +19,7 @@ KUBE_PROXY?=
 INSTALL_EXEC_COMMAND?="--disable traefik --flannel-backend none --write-kubeconfig-mode 0644 --cluster-cidr $(POD_CIDR) --service-cidr $(SERVICE_CIDR) --cluster-dns $(DNS_IP) --disable-network-policy $(TLS_SAN) $(KUBE_PROXY)"
 CILIUM_NAME?=bomber
 CILIUM_ID?=100
-CILIUM_OPTS?=--name $(CILIUM_NAME) --cluster-id $(CILIUM_ID) # --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict
+CILIUM_OPTS?=--set cluster.name=$(CILIUM_NAME) --set cluster.id=$(CILIUM_ID) # --config host-reachable-services-protos=tcp --config enable-host-reachable-services=true --kube-proxy-replacement strict
 
 .EXPORT_ALL_VARIABLES:
 
@@ -62,17 +62,18 @@ cilium-cli-install:
 	rm cilium-linux-$(ARCH).tar.gz{,.sha256sum}
 
 cilium-install:
-	$(KUBECTL) apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml
+	$(KUBECTL) apply -f cilium/gateway-api-crds.yaml
 	$(CILIUM) install $(CILIUM_OPTS) \
+		--helm-set kubeProxyReplacement=true \
+		--helm-set l2announcements.enabled=true \
 		--helm-set gatewayAPI.enabled=true \
 		--helm-set gatewayAPI.hostNetwork.enabled=false \
-		--helm-set gatewayAPI.service.type=NodePort \
-		--helm-set ingressController.enabled=false \
-		--helm-set ingressController.loadbalancerMode=shared \
-		--helm-set ingressController.service.type=NodePort \
-		--helm-set ingressController.service.insecureNodePort=30080 \
-		--helm-set ingressController.service.secureNodePort=30443 \
+		--helm-set gatewayAPI.service.type=LoadBalancer \
+		--helm-set k8sServiceHost=192.168.86.27 \
+		--helm-set k8sServicePort=6443 \
 		--wait
+	$(KUBECTL) apply -f cilium/l2-announcements.yaml
+	$(KUBECTL) apply -f cilium/certificate.yaml
 
 # cilium-istio:
 # 	curl -L https://github.com/cilium/istio/releases/download/1.10.4/cilium-istioctl-1.10.4-$(ARCH).tar.gz | tar xz

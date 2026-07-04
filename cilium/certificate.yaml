@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: orbo-mate-tls
+  namespace: default
+spec:
+  secretName: orbo-mate-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: orbo.shipperizer.org
+  dnsNames:
+  - orbo.shipperizer.org

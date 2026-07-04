@@ -10,8 +10,10 @@ spec:
       name: letsencrypt-staging-key
     solvers:
     - http01:
-        ingress:
-          ingressClassName: cilium
+        gatewayHTTPRoute:
+          parentRefs:
+          - name: orbo-mate-gateway
+            namespace: default
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -25,5 +27,7 @@ spec:
       name: letsencrypt-prod-key
     solvers:
     - http01:
-        ingress:
-          ingressClassName: cilium
+        gatewayHTTPRoute:
+          parentRefs:
+          - name: orbo-mate-gateway
+            namespace: default
