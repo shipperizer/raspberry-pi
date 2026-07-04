@@ -57,6 +57,11 @@ This repository provides manifests and a [Makefile](file:///home/alarm/shipperiz
    sudo systemctl restart systemd-sysctl
    ```
 
+4. Install `container-structure-test` (ARM64 binary) to verify container structures during testing:
+   ```bash
+   make container-structure-test-install
+   ```
+
 ---
 
 ## 2. Bootstrapping k0s Single-Node Cluster

@@ -1,12 +1,13 @@
-.PHONY: deps apt k8s-helpers k3s k0s-install test cilium-cli-install cilium-install istio-install loki cert-manager-install
-
-HELM3?=helm
-SKAFFOLD?=skaffold
-ISTIO_VERSION?=1.11.4
-CERT_MANAGER_VERSION?=v1.15.1
-ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
-KUBECTL?=kubectl
-ARCH?=arm64
+.PHONY: deps apt k8s-helpers k3s k0s-install test cilium-cli-install cilium-install istio-install loki cert-manager-install container-structure-test-install
+ 
+ HELM3?=helm
+ SKAFFOLD?=skaffold
+ ISTIO_VERSION?=1.11.4
+ CERT_MANAGER_VERSION?=v1.15.1
+ CONTAINER_STRUCTURE_TEST_VERSION?=v1.22.1
+ ISTIOCTL?=istio-$(ISTIO_VERSION)/bin/istioctl
+ KUBECTL?=kubectl
+ ARCH?=arm64
 CILIUM?=cilium
 CILIUM_ISTIOCTL?=./cilium-istioctl
 HUBBLE?=hubble
@@ -102,4 +103,9 @@ cert-manager-install:
 	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml
 	$(KUBECTL) wait --for=condition=Available --timeout=300s deployment/cert-manager-webhook -n cert-manager
 	$(KUBECTL) apply -f cert-manager/cluster_issuer.yaml
+
+container-structure-test-install:
+	curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/download/$(CONTAINER_STRUCTURE_TEST_VERSION)/container-structure-test-linux-$(ARCH)
+	chmod +x container-structure-test-linux-$(ARCH)
+	sudo mv container-structure-test-linux-$(ARCH) /usr/local/bin/container-structure-test
 
