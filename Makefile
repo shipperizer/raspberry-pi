@@ -63,15 +63,7 @@ cilium-cli-install:
 
 cilium-install:
 	$(KUBECTL) apply -f cilium/gateway-api-crds.yaml
-	$(CILIUM) install $(CILIUM_OPTS) \
-		--helm-set kubeProxyReplacement=true \
-		--helm-set l2announcements.enabled=true \
-		--helm-set gatewayAPI.enabled=true \
-		--helm-set gatewayAPI.hostNetwork.enabled=false \
-		--helm-set gatewayAPI.service.type=LoadBalancer \
-		--helm-set k8sServiceHost=192.168.86.27 \
-		--helm-set k8sServicePort=6443 \
-		--wait
+	$(CILIUM) install -f cilium/values.yaml --wait
 	$(KUBECTL) apply -f cilium/l2-announcements.yaml
 	$(KUBECTL) apply -f cilium/certificate.yaml
 

@@ -17,15 +17,8 @@ This repository provides manifests and a [Makefile](file:///home/alarm/shipperiz
                                      v
                       +--------------+--------------+
                       |      Raspberry Pi Node      |
-                      |  Forward Port 80  -> 30080  |
-                      |  Forward Port 443 -> 30443  |
-                      +--------------+--------------+
-                                     |
-                                     v
-                      +--------------+--------------+
-                      |   Cilium Ingress Service    |
-                      |  (NodePort Shared mode)     |
-                      |   HTTP: 30080, HTTPS: 30443 |
+                      |  (Envoy Gateway on Host Net)|
+                      |   HTTP: 80, HTTPS: 443      |
                       +--------------+--------------+
                                      |
                                      | (Gateway API / Routing)
@@ -97,27 +90,27 @@ make cilium-cli-install
 ```
 
 ### Step B: Deploy Cilium
-Deploy Cilium with Gateway API and L2 Announcements enabled, using a local LoadBalancer IP pool and L2 ARP advertisements:
+Deploy Cilium with Gateway API, L2 Announcements, and Hubble observability enabled. The deployment uses the helm configuration file `cilium/values.yaml`:
 ```bash
 make cilium-install
 ```
 
 This target:
 1. Applies the **Gateway API CRDs**.
-2. Deploys Cilium with the following options:
-   * `kubeProxyReplacement=true`: Enables eBPF-based kube-proxy replacement, which is required for Gateway API.
-   * `l2announcements.enabled=true`: Enables Cilium to answer ARP requests for LoadBalancer IPs.
-   * `gatewayAPI.enabled=true`: Enables support for Gateway API resources.
-   * `gatewayAPI.hostNetwork.enabled=false`: Disables host networking for the Gateway proxy.
-   * `gatewayAPI.service.type=LoadBalancer`: Uses LoadBalancer services for Gateways.
+2. Deploys Cilium using the configuration file [cilium/values.yaml](file:///home/alarm/shipperizer/raspberry-pi/cilium/values.yaml), which configures:
+   * `cluster.name: bomber`: Configures the cluster name.
+   * `kubeProxyReplacement: true`: Enables eBPF-based kube-proxy replacement, which is required for Gateway API.
+   * `operator.replicas: 1`: Sets replicas to 1 (ideal for single-node setups).
+   * `routingMode: tunnel` & `tunnelProtocol: vxlan`: Uses VXLAN tunneling for network routing.
+   * `ingressController.enabled: false`: Disables default Cilium Ingress Controller.
+   * `l7Proxy: true`: Enables the L7 proxy.
+   * `l2announcements.enabled: true`: Enables L2 announcements.
+   * `gatewayAPI.enabled: true`: Enables support for Gateway API resources.
+   * `gatewayAPI.hostNetwork.enabled: true`: Enables host networking for the Gateway proxy (Envoy binds directly to host ports `80` and `443` on the Raspberry Pi node).
+   * `k8sServiceHost: 192.168.86.27` & `k8sServicePort: 6443`: Explicitly points to the Kubernetes API server host.
+   * `hubble`: Enables Hubble, Hubble Relay, and Hubble UI for observability.
 3. Applies `cilium/l2-announcements.yaml` to define the LoadBalancer IP pool (`192.168.86.30-192.168.86.35`) and the L2 Announcement Policy.
 4. Applies `cilium/certificate.yaml` to request the Let's Encrypt production SSL certificate for the domain.
-
-> [!NOTE]
-> If you need the HTTP/HTTPS listeners to use specific static NodePorts (e.g. `30080` and `30443` to match your home router's port forwarding), you can patch the generated Gateway service after deployment:
-> ```bash
-> kubectl patch svc cilium-gateway-orbo-mate-gateway -n default --type='json' -p='[{"op": "replace", "path": "/spec/ports/0/nodePort", "value": 30080},{"op": "replace", "path": "/spec/ports/1/nodePort", "value": 30443}]'
-> ```
 
 ---
 
@@ -129,21 +122,23 @@ Install cert-manager and wait for its webhook service to start:
 make cert-manager-install
 ```
 
-This applies the [cluster_issuer.yaml](file:///home/alarm/shipperizer/raspberry-pi/cert-manager/cluster_issuer.yaml) which defines staging and production Let's Encrypt `ClusterIssuers` configured to use the Cilium Ingress solver:
+This applies the [cluster_issuer.yaml](file:///home/alarm/shipperizer/raspberry-pi/cert-manager/cluster_issuer.yaml) which defines staging and production Let's Encrypt `ClusterIssuers` configured to use the Gateway HTTPRoute solver:
 ```yaml
 solvers:
 - http01:
-    ingress:
-      ingressClassName: cilium
+    gatewayHTTPRoute:
+      parentRefs:
+      - name: orbo-mate-gateway
+        namespace: default
 ```
 
 ### Reliable Port-Forwarding Strategy
 Because your Raspberry Pi is hosted inside a private home network behind a NAT router:
 1. Let's Encrypt requires port `80` to be reachable from the internet for the `HTTP-01` challenge validation.
 2. Setup **Port Forwarding** on your home internet router:
-   * Forward incoming WAN port **80** to the Raspberry Pi node's IP on LAN port **30080**.
-   * Forward incoming WAN port **443** to the Raspberry Pi node's IP on LAN port **30443**.
-3. When cert-manager generates a temporary Ingress solver to answer the HTTP-01 challenge, Cilium routes the traffic arriving on port `30080` (forwarded from external `80`) to the solver pod, allowing Let's Encrypt to verify domain ownership and issue the certificate successfully.
+   * Forward incoming WAN port **80** to the Raspberry Pi node's IP on LAN port **80**.
+   * Forward incoming WAN port **443** to the Raspberry Pi node's IP on LAN port **443**.
+3. Since Cilium is configured with `gatewayAPI.hostNetwork.enabled: true`, Envoy binds directly to host ports `80` and `443` on the Raspberry Pi node, handling the HTTP-01 challenge and secure traffic directly on those ports.
 
 ---
 

@@ -1,12 +1,25 @@
 cluster:
-  name: default
-k8sServiceHost: 127.0.0.1
-k8sServicePort: 6443
+  name: bomber
 kubeProxyReplacement: true
 operator:
   replicas: 1
 routingMode: tunnel
 tunnelProtocol: vxlan
 ingressController:
+  enabled: false
+l7Proxy: true  
+l2announcements:
+    enabled: true
+gatewayAPI:
+    enabled: true 
+    hostNetwork:
+        enabled: true
+k8sServiceHost: 192.168.86.27
+k8sServicePort: 6443
+# Observability
+hubble:
   enabled: true
-  default: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
