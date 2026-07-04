@@ -1,0 +1,9 @@
+apiVersion: k0s.sh/v1beta1
+kind: ClusterConfig
+metadata:
+  name: k0s-cilium-cluster
+spec:
+  network:
+    provider: custom
+    kubeProxy:
+      disabled: true

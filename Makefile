@@ -40,13 +40,8 @@ k8s-helpers: apt
 k0s-install:
 	curl -sSLf https://get.k0s.sh | sudo sh
 	sudo mkdir -p /etc/k0s
-	k0s config create | sudo tee /etc/k0s/k0s.yaml > /dev/null
-	sudo python3 -c "import sys, re; \
-		c = open('/etc/k0s/k0s.yaml').read(); \
-		c = re.sub(r'telemetry:\s*\n\s*enabled:\s*true', 'telemetry:\n    enabled: false', c); \
-		c = re.sub(r'provider:\s*\S+', 'provider: custom\n    kubeProxy:\n      disabled: true', c); \
-		open('/etc/k0s/k0s.yaml', 'w').write(c)"
-	sudo k0s install controller --single -c /etc/k0s/k0s.yaml
+	sudo cp k0s/k0s.yaml /etc/k0s/k0s.yaml
+	sudo k0s install controller --single -c /etc/k0s/k0s.yaml --disable-components=kube-proxy
 	sudo k0s start
 
 k3s:
