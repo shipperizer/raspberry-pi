@@ -1,4 +1,4 @@
-.PHONY: deps apt k8s-helpers k3s k0s-install test cilium-cli-install cilium-install istio-install loki cert-manager-install container-structure-test-install
+.PHONY: deps apt k8s-helpers k3s k0s-install test cilium-cli-install cilium-install istio-install loki cert-manager-install container-structure-test-install cloudflared-install cloudflared-uninstall
  
  HELM3?=helm
  SKAFFOLD?=skaffold
@@ -96,4 +96,10 @@ container-structure-test-install:
 	curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/download/$(CONTAINER_STRUCTURE_TEST_VERSION)/container-structure-test-linux-$(ARCH)
 	chmod +x container-structure-test-linux-$(ARCH)
 	sudo mv container-structure-test-linux-$(ARCH) /usr/local/bin/container-structure-test
+
+cloudflared-install:
+	$(KUBECTL) apply -k cloudflared/overlays/production
+
+cloudflared-uninstall:
+	$(KUBECTL) delete -k cloudflared/overlays/production
 
