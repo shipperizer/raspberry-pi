@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+data:
+  config.yaml: |
+    # Cloudflared Configuration
+    # Note: When running with a tunnel token, most configurations (like routes and ingress rules) 
+    # are managed via the Cloudflare Zero Trust Dashboard.
