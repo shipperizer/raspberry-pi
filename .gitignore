@@ -1,2 +1,3 @@
 istio-*/
 smallstep/issuer.yaml
+cloudflared/overlays/*/secret.yaml
